@@ -17,7 +17,7 @@ const keys = {left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'Arro
 let keyPressed = {up: false, down: false, left: false, right: false};
 speed = 8;
 
-class Player {
+class Taxi {
     constructor(){
         this.position = {x:1000, y:450};
         this.velocity = {x:0, y:0};
@@ -49,23 +49,31 @@ class Player {
 
 
         if (keyPressed.right) {
-            this.flip('RIGHT');
-            this.velocity.x = speed;
+            if (!checkCollision(this.getNextColliderData('RIGHT',0, 90, 320, 97), area)) {
+                this.flip('RIGHT');
+                this.velocity.x = speed;
+            }
         }
 
         if (keyPressed.left) {
-            this.flip('LEFT');
-            this.velocity.x = -speed;
+            if (!checkCollision(this.getNextColliderData('LEFT',0, 90, 320, 97), area)) {
+                this.flip('LEFT');
+                this.velocity.x = -speed;
+            }
         }
         if (keyPressed.up) {
-            this.flip('UP');
+            if (!checkCollision(this.getNextColliderData('UP',0, 50, 187, 195), area)) {
+                this.flip('UP');
             this.velocity.y = -speed;
+            }
         }
         if (keyPressed.down) {
-            this.flip('DOWN');
-            this.velocity.y = speed;
+            if (!checkCollision(this.getNextColliderData('DOWN',0, 50, 187, 210), area)) {
+                this.flip('DOWN');
+                this.velocity.y = speed;
+            }
         }
-        if (checkCollsion(this, area)) {
+        if (checkCollision(this, area)) {
             this.velocity.x = 0;
             this.velocity.y = 0;
         }
@@ -73,7 +81,7 @@ class Player {
         // draw image
         ctx.drawImage(this.img, this.position.x,this.position.y,this.img.width*this.imgScale,this.img.height*this.imgScale);
         // draw collision
-        ctx.fillStyle = '#00ff0020';
+        ctx.fillStyle = '#00ff0030';
         ctx.fillRect(this.collider.position.x,this.collider.position.y,this.collider.width,this.collider.height);
     }
 
@@ -82,13 +90,13 @@ class Player {
             case 'UP':
                 this.img = taxiUp;
                 this.adjustPosition('UP');
-                this.adjustCollider(0, 0, 187, 245);
+                this.adjustCollider(0, 50, 187, 195);
                 this.direction = "UP";
                 break;
             case 'DOWN':
                 this.img = taxiDown;
                 this.adjustPosition('DOWN');
-                this.adjustCollider(0, 0, 187, 260);
+                this.adjustCollider(0, 50, 187, 210);
                 this.direction = "DOWN";
                 break;
             case 'LEFT':
@@ -107,17 +115,70 @@ class Player {
                 break;
         }
     }
-
     adjustCollider(mx,my,width,height){
         this.collider.margins.x = mx * this.imgScale;
         this.collider.margins.y = my * this.imgScale;
         this.collider.width = width * this.imgScale;
         this.collider.height = height * this.imgScale;
     }
+    
+    getNextColliderData(dir,mx,my,width,height){
+        let newImg;
+        let imgScale = 0.45;
+        let imgPosition = {...this.position};
+        // Start Imahe Position
+        switch (dir) {
+            case 'UP':
+                newImg = taxiUp;
+                if (this.direction === 'LEFT') {
+                    imgPosition.y = this.edges.bottom - newImg.height * imgScale;
+                }
+                if (this.direction === 'RIGHT') {
+                    imgPosition.x = this.edges.right - newImg.width * imgScale;
+                    imgPosition.y = this.edges.bottom - newImg.height * imgScale;
+                }
+                break;
+            case 'DOWN':
+                newImg = taxiDown;
+                if (this.direction === 'RIGHT') {
+                    imgPosition.x = this.edges.right - newImg.width * imgScale;
+                }
+                break;
+            case 'LEFT':
+                newImg = taxiLeft;
+                if (this.direction === 'UP') {
+                    imgPosition.x = this.edges.right - newImg.width * imgScale;
+                }
+                if (this.direction === 'DOWN') {
+                    imgPosition.x = this.edges.right - newImg.width * imgScale;
+                    imgPosition.y = this.edges.bottom - newImg.height * imgScale;
+                }
+                break;
+            case 'RIGHT':
+                newImg = taxiRight;
+                if (this.direction === 'DOWN') {
+                    imgPosition.y = this.edges.bottom - newImg.height * imgScale;
+                }
+                break;
+            default:
+                break;
+        }
+        // End Imahe Position
+        let colliderData = {velocity: {x: 0, y: 0}, collider: {position: {}}};
+        colliderData.collider.position.x = imgPosition.x + mx * imgScale;
+        colliderData.collider.position.y = imgPosition.y + my * imgScale;
+        colliderData.collider.width = width * imgScale;
+        colliderData.collider.height = height * imgScale;
+        return colliderData;
+    }
     adjustPosition(targetDirec){
         switch (targetDirec) {
             case 'UP':
                 if (this.direction === 'LEFT') {
+                    this.position.y = this.edges.bottom - this.img.height * this.imgScale;
+                }
+                if (this.direction === 'RIGHT') {
+                    this.position.x = this.edges.right - this.img.width * this.imgScale;
                     this.position.y = this.edges.bottom - this.img.height * this.imgScale;
                 }
                 break;
@@ -167,14 +228,14 @@ class Area {
 }
 
 let area = new Area(400,100,600,300);
-let player = new Player();
+let taxi = new Taxi();
 
 function animate() {
     ctx.fillStyle = 'black';
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     area.update();
-    player.update();
+    taxi.update();
     requestAnimationFrame(animate);
 }
 
@@ -212,23 +273,10 @@ addEventListener('keyup', function (e) {
 });
 
 
-const checkCollision = (objectOne, objectTwo, velocity) => {
-    const positionOne = objectOne.position;
-    const positionTwo = objectTwo.position;
-
-    const dimentionsOne = objectOne.dimentions;
-    const dimentionsTwo = objectTwo.dimentions;
-
-    if (positionOne.x < (positionTwo.x + dimentionsTwo.width - velocity.x) && (positionOne.x + dimentionsOne.width + velocity.x) > positionTwo.x && positionOne.y < (positionTwo.y + dimentionsTwo.height - velocity.y) && (positionOne.y + dimentionsOne.height + velocity.y) > positionTwo.y) {
-        return true;
-    }
-    return false;
-}
-
 /**************************** functions ******************************/
 
-function checkCollsion(ObjOne, Objwo){
-    if (ObjOne.collider.position.x < (Objwo.collider.position.x + Objwo.collider.width - ObjOne.velocity.x) && (ObjOne.collider.position.x + ObjOne.collider.width + ObjOne.velocity.x) > Objwo.collider.position.x && ObjOne.collider.position.y < (Objwo.collider.position.y + Objwo.collider.height - ObjOne.velocity.y) && (ObjOne.collider.position.y + ObjOne.collider.height + ObjOne.velocity.y) > Objwo.collider.position.y) {
+function checkCollision(ObjOne, Objwo){
+    if (ObjOne.collider.position.x < (Objwo.collider.position.x + Objwo.collider.width - ObjOne.velocity.x) && (ObjOne.collider.position.x + ObjOne.collider.width + ObjOne.velocity.x) > Objwo.collider.position.x && ObjOne.collider.position.y < (Objwo.collider.position.y + Objwo.collider.height + ObjOne.velocity.y) && (ObjOne.collider.position.y + ObjOne.collider.height + ObjOne.velocity.y) > Objwo.collider.position.y) {
         return true;
     }
     return false;
